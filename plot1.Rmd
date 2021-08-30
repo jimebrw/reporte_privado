@@ -1,0 +1,130 @@
+---
+title: "plot"
+author: "Jimena Bravo"
+date: "30/8/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(plotly)
+library(gapminder)
+library(scales)
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(writexl)
+library(tibble)
+library(janitor)
+library(epiDisplay)
+library(ggplot2)
+library(reshape2)
+library(ggrepel)
+library(shiny)
+```
+
+
+```{r}
+PRI1 <- read_excel("PRI_1.xlsx")
+PRI2 <- read_xlsx("COLLA_PRIVADO.xlsx")
+
+PRIX <- merge(PRI1, PRI2)
+PRIX <- subset(PRIX, V2021 <= 2500)
+
+PRIX$PISA1[PRIX$PISA == 1] <- "PRODUCIDO POR PISA" 
+PRIX$PISA1[PRIX$PISA == 0] <- "NO PRODUCIDO POR PISA" 
+PRIX$Molecula[PRIX$PISA == 1] <- PRIX$Molécula
+
+colors = c("Black", "Red")
+```
+
+
+```{r}
+P <- ggplot(PRIX, aes(x=V2021, y=U2021, label = Molécula, col = factor(PISA1), shape = factor(PISA1))) + 
+  geom_point(size = 3) +  
+  geom_label_repel(force = 10, size= 5, max.overlaps = 16, show.legend = F) + 
+  labs(title = "Relación demanda en unidades y en valor de venta de medicamentos en México",
+        subtitle = "Compras del sector privado, año 2021") + 
+  ylab("Demanda del medicamento") + 
+  xlab("Ventas del medicamento en millones de pesos") + 
+  theme_minimal(base_size = 18) + 
+  scale_color_manual(values=c("Pink", "Black", "Steelblue"))
+
+P <- P + theme(legend.title=element_blank())
+
+ggplotly(P)
+
+```
+
+
+```{r}
+#SHINY
+
+
+ui <- fluidPage(
+  # App title ----
+  titlePanel("Relación demanda en unidades y en valor de venta de medicamentos en México"),
+  
+  # Sidebar layout with input and output definitions ----
+  sidebarLayout(
+    # Sidebar panel for inputs ----
+    sidebarPanel(
+      
+      selectInput(inputId="ventas",label="Año de ventas",choices = c("V2018"="V2018",
+                                                                        "V2019"="V2019",
+                                                                        "V2020"="V2020",
+                                                                        "V2021"="V2021"),
+                  selected = "V2021",multiple = F),
+    ),
+    
+    # Main panel for displaying outputs ----
+    mainPanel(
+      
+      # Output: Histogram ----
+      plotlyOutput(outputId = "scatterp")
+    )
+  )
+)
+
+server <- function(input, output){
+  
+  output$scatterp <- renderPlotly({
+  p1  <- PRIX %>% 
+    ggplot()
+    if(input$ventas == "V2018"){
+      p1 <- p1 +  geom_point(aes(x=V2018, y=U2018, label = Molécula, col = factor(PISA1), shape = factor(PISA1)),size = 3, show.legend=FALSE)
+    }else if(input$ventas == "V2019"){
+      p1 <- p1 +  geom_point(aes(x=V2019, y=U2019, label = Molécula, col = factor(PISA1), shape = factor(PISA1)),size = 3, show.legend=FALSE)
+    }else if(input$ventas == "V2020"){
+      p1 <- p1 +  geom_point(aes(x=V2020, y=U2020, label = Molécula, col = factor(PISA1), shape = factor(PISA1)),size = 3, show.legend=FALSE)
+    }else if(input$ventas == "V2021"){
+      p1 <- p1 +  geom_point(aes(x=V2021, y=U2021, label = Molécula, col = factor(PISA1), shape = factor(PISA1)),size = 3, show.legend=FALSE)
+    }
+  p1 <- p1 + 
+    #geom_label_repel(force = 10, size= 5, max.overlaps = 16, show.legend = F) + 
+    labs(title = "Compras del sector privado") + 
+    ylab("Demanda del medicamento") + 
+    xlab("Ventas del medicamento en millones de pesos") + 
+    theme_minimal(base_size = 18) + 
+    scale_color_manual(values=c("Pink", "Black", "Steelblue")) +
+    theme(legend.position = "bottom")+
+    scale_y_continuous(labels=function(n){format(n, scientific = FALSE)})
+  
+p1
+ 
+
+  
+  })
+}
+
+shinyApp(ui = ui, server = server)
+
+
+
+```
+
+
